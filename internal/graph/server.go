@@ -69,8 +69,8 @@ func NewServer(cfg Config) (*Server, error) {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;")
-
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none';")
 		htmlData, err := fs.ReadFile(webSubFS, "index.html")
 		if err != nil {
 			http.Error(w, "index.html missing from embedded assets", http.StatusInternalServerError)
@@ -81,14 +81,33 @@ func NewServer(cfg Config) (*Server, error) {
 
 	// 3. Sanitized snapshot data API (strictly loopback + same-origin + token-validated)
 	mux.HandleFunc("/api/snapshot", func(w http.ResponseWriter, r *http.Request) {
-		// Verify local loopback peer
+		// SEC-05: Verify local loopback peer and Host header
 		peer, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil || !isLoopback(peer) {
 			http.Error(w, "forbidden: local viewer only", http.StatusForbidden)
 			return
 		}
 
-		// Verify token from query or header
+		reqHost, _, _ := net.SplitHostPort(r.Host)
+		if reqHost == "" {
+			reqHost = r.Host
+		}
+		if !isLoopback(reqHost) {
+			http.Error(w, "forbidden: invalid Host header", http.StatusForbidden)
+			return
+		}
+
+		// SEC-05: Verify Origin if request carries one
+		if origin := r.Header.Get("Origin"); origin != "" {
+			if !strings.HasPrefix(origin, "http://127.0.0.1:") && !strings.HasPrefix(origin, "http://localhost:") {
+				http.Error(w, "forbidden: cross-origin access disallowed", http.StatusForbidden)
+				return
+			}
+		}
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			http.Error(w, "forbidden: cross-site access disallowed", http.StatusForbidden)
+			return
+		}
 		reqToken := r.URL.Query().Get("token")
 		if reqToken == "" {
 			reqToken = r.Header.Get("X-Dataprobe-Token")

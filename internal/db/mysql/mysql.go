@@ -226,13 +226,13 @@ func (i *Inspector) Inspect(ctx context.Context, scope db.Scope) (*model.Snapsho
 	tableIndexMap := make(map[string]map[string]*indexCollector)
 
 	for idxRows.Next() {
-		var schema, tableName, idxName, colName, collation, idxType string
+		var schema, tableName, idxName, collation, idxType string
+		var colName sql.NullString
 		var nonUnique, seqInIndex int
 
 		if err := idxRows.Scan(&schema, &tableName, &idxName, &nonUnique, &seqInIndex, &colName, &collation, &idxType); err != nil {
 			return nil, fmt.Errorf("failed scanning index row: %w", err)
 		}
-
 		key := schema + "." + tableName
 		if _, exists := tableMap[key]; !exists {
 			continue
@@ -252,9 +252,13 @@ func (i *Inspector) Inspect(ctx context.Context, scope db.Scope) (*model.Snapsho
 			}
 			tableIndexMap[key][idxName] = collector
 		}
+		cName := colName.String
+		if !colName.Valid || cName == "" {
+			cName = fmt.Sprintf("expr_col_%d", seqInIndex)
+		}
 
 		collector.columns = append(collector.columns, model.IndexColumn{
-			Name:      colName,
+			Name:      cName,
 			Seq:       seqInIndex,
 			Collation: collation,
 		})
@@ -330,7 +334,7 @@ func (i *Inspector) Inspect(ctx context.Context, scope db.Scope) (*model.Snapsho
 			return nil, fmt.Errorf("failed scanning foreign key row: %w", err)
 		}
 
-		if isExcluded(fromTable, scope.ExcludeTables) {
+		if isExcluded(fromTable, scope.ExcludeTables) || isExcluded(toTable, scope.ExcludeTables) {
 			continue
 		}
 

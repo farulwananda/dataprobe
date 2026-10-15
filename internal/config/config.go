@@ -136,15 +136,46 @@ func (c *Config) ResolveDSN() (string, error) {
 	return dsn, nil
 }
 
-// RedactDSN strips passwords and secrets from connection strings for safe logging/errors.
+// RedactDSN strips passwords and secrets from MySQL and PostgreSQL connection strings for safe logging/errors.
 func RedactDSN(dsn string) string {
-	// Standard MySQL DSN: user:pass@tcp(host:port)/dbname
-	if atIdx := strings.Index(dsn, "@"); atIdx != -1 {
-		userPass := dsn[:atIdx]
-		rest := dsn[atIdx:]
-		if colonIdx := strings.Index(userPass, ":"); colonIdx != -1 {
-			return userPass[:colonIdx] + ":[REDACTED]" + rest
+	trimmed := strings.TrimSpace(dsn)
+	if trimmed == "" {
+		return ""
+	}
+
+	// 1. PostgreSQL key-value format (e.g. "host=... user=... password=secret dbname=...")
+	if strings.Contains(trimmed, "=") && !strings.Contains(trimmed, "@tcp(") && !strings.Contains(trimmed, "://") {
+		parts := strings.Fields(trimmed)
+		for i, p := range parts {
+			kv := strings.SplitN(p, "=", 2)
+			if len(kv) == 2 && strings.EqualFold(kv[0], "password") {
+				parts[i] = "password=[REDACTED]"
+			}
+		}
+		return strings.Join(parts, " ")
+	}
+
+	// 2. URL format (e.g. postgres://user:pass@host:port/db or mysql://...)
+	if strings.Contains(trimmed, "://") {
+		schemeIdx := strings.Index(trimmed, "://")
+		rest := trimmed[schemeIdx+3:]
+		if atIdx := strings.LastIndex(rest, "@"); atIdx != -1 {
+			userInfo := rest[:atIdx]
+			hostAndPath := rest[atIdx:]
+			if colonIdx := strings.Index(userInfo, ":"); colonIdx != -1 {
+				return trimmed[:schemeIdx+3] + userInfo[:colonIdx] + ":[REDACTED]" + hostAndPath
+			}
 		}
 	}
-	return dsn
+
+	// 3. MySQL DSN format (e.g. user:password@tcp(...) or user:p@ss@tcp(...))
+	if lastAt := strings.LastIndex(trimmed, "@"); lastAt != -1 {
+		userPass := trimmed[:lastAt]
+		hostAndDB := trimmed[lastAt:]
+		if firstColon := strings.Index(userPass, ":"); firstColon != -1 {
+			return userPass[:firstColon] + ":[REDACTED]" + hostAndDB
+		}
+	}
+
+	return trimmed
 }

@@ -323,7 +323,7 @@ func (i *Inspector) Inspect(ctx context.Context, scope db.Scope) (*model.Snapsho
 			return nil, fmt.Errorf("failed scanning pg foreign key row: %w", err)
 		}
 
-		if isExcluded(fromTable, scope.ExcludeTables) {
+		if isExcluded(fromTable, scope.ExcludeTables) || isExcluded(toTable, scope.ExcludeTables) {
 			continue
 		}
 
@@ -393,17 +393,56 @@ func (i *Inspector) Inspect(ctx context.Context, scope db.Scope) (*model.Snapsho
 
 func parsePgArray(raw string) []string {
 	raw = strings.TrimSpace(raw)
-	raw = strings.TrimPrefix(raw, "{")
-	raw = strings.TrimSuffix(raw, "}")
+	if !strings.HasPrefix(raw, "{") || !strings.HasSuffix(raw, "}") {
+		return nil
+	}
+	raw = raw[1 : len(raw)-1]
 	if raw == "" {
 		return nil
 	}
-	parts := strings.Split(raw, ",")
-	res := make([]string, len(parts))
-	for idx, p := range parts {
-		res[idx] = strings.Trim(strings.TrimSpace(p), `"`)
+
+	var elements []string
+	var cur strings.Builder
+	inQuotes := false
+	parenDepth := 0
+
+	for i := 0; i < len(raw); i++ {
+		ch := raw[i]
+		switch ch {
+		case '\\':
+			if i+1 < len(raw) {
+				cur.WriteByte(raw[i+1])
+				i++
+			}
+		case '"':
+			inQuotes = !inQuotes
+		case '(':
+			if !inQuotes {
+				parenDepth++
+			}
+			cur.WriteByte(ch)
+		case ')':
+			if !inQuotes && parenDepth > 0 {
+				parenDepth--
+			}
+			cur.WriteByte(ch)
+		case ',':
+			if !inQuotes && parenDepth == 0 {
+				elem := strings.Trim(strings.TrimSpace(cur.String()), `"`)
+				elements = append(elements, elem)
+				cur.Reset()
+			} else {
+				cur.WriteByte(ch)
+			}
+		default:
+			cur.WriteByte(ch)
+		}
 	}
-	return res
+	if cur.Len() > 0 {
+		elem := strings.Trim(strings.TrimSpace(cur.String()), `"`)
+		elements = append(elements, elem)
+	}
+	return elements
 }
 
 func isExcluded(table string, patterns []string) bool {
@@ -417,4 +456,9 @@ func isExcluded(table string, patterns []string) bool {
 		}
 	}
 	return false
+}
+
+// ExportParsePgArray exposes parsePgArray for deterministic package testing.
+func ExportParsePgArray(raw string) []string {
+	return parsePgArray(raw)
 }

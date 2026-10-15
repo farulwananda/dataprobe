@@ -5,12 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-
 	"github.com/farulwananda/dataprobe/internal/audit"
 	"github.com/farulwananda/dataprobe/internal/config"
 	"github.com/farulwananda/dataprobe/internal/db"
@@ -21,6 +15,12 @@ import (
 	"github.com/farulwananda/dataprobe/internal/model"
 	"github.com/farulwananda/dataprobe/internal/report"
 	"github.com/farulwananda/dataprobe/internal/snapshot"
+	"io"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 )
 
 // Exit codes following Section 6 of DATAPROBE_PLAN.md
@@ -124,7 +124,7 @@ func runInspect(args []string, stdout, stderr io.Writer) int {
 
 	inspector, err := newInspector(cfg.Source.Engine, dsn)
 	if err != nil {
-		fmt.Fprintf(stderr, "dataprobe inspect: failed connecting to database: %v\n", err)
+		fmt.Fprintf(stderr, "dataprobe inspect: failed connecting to database: %s\n", sanitizeError(err, dsn))
 		return ExitRuntime
 	}
 	defer inspector.Close()
@@ -135,7 +135,7 @@ func runInspect(args []string, stdout, stderr io.Writer) int {
 		Alias:         cfg.Source.Alias,
 	})
 	if err != nil {
-		fmt.Fprintf(stderr, "dataprobe inspect: introspection failed: %v\n", err)
+		fmt.Fprintf(stderr, "dataprobe inspect: introspection failed: %s\n", sanitizeError(err, dsn))
 		return ExitRuntime
 	}
 
@@ -187,7 +187,7 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 
 	inspector, err := newInspector(cfg.Source.Engine, dsn)
 	if err != nil {
-		fmt.Fprintf(stderr, "dataprobe snapshot: failed connecting to database: %v\n", err)
+		fmt.Fprintf(stderr, "dataprobe snapshot: failed connecting to database: %s\n", sanitizeError(err, dsn))
 		return ExitRuntime
 	}
 	defer inspector.Close()
@@ -198,7 +198,7 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 		Alias:         cfg.Source.Alias,
 	})
 	if err != nil {
-		fmt.Fprintf(stderr, "dataprobe snapshot: introspection failed: %v\n", err)
+		fmt.Fprintf(stderr, "dataprobe snapshot: introspection failed: %s\n", sanitizeError(err, dsn))
 		return ExitRuntime
 	}
 	if *anonymize {
@@ -266,7 +266,7 @@ func runGraph(args []string, stdout, stderr io.Writer) int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := srv.Serve(); err != nil && !errors.Is(err, httpErrClosed) {
+		if err := srv.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
 	}()
@@ -399,9 +399,6 @@ func shouldFail(findings []model.Finding, threshold string) bool {
 
 	return false
 }
-
-var httpErrClosed = errors.New("http: Server closed")
-
 func newInspector(engine, dsn string) (db.Inspector, error) {
 	switch engine {
 	case "mysql":
@@ -411,4 +408,16 @@ func newInspector(engine, dsn string) (db.Inspector, error) {
 	default:
 		return nil, fmt.Errorf("unsupported database engine: %q", engine)
 	}
+}
+
+func sanitizeError(err error, rawDSN string) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	if rawDSN != "" {
+		redacted := config.RedactDSN(rawDSN)
+		msg = strings.ReplaceAll(msg, rawDSN, redacted)
+	}
+	return msg
 }

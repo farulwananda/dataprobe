@@ -146,12 +146,14 @@ func Compare(oldSnap, newSnap *model.Snapshot) *SnapshotDiff {
 					delta.ColumnsAdded = append(delta.ColumnsAdded, c)
 				}
 			}
+			sort.Strings(delta.ColumnsAdded)
+
 			for c := range oldColMap {
 				if !newColMap[c] {
 					delta.ColumnsRemoved = append(delta.ColumnsRemoved, c)
 				}
 			}
-
+			sort.Strings(delta.ColumnsRemoved)
 			if delta.TotalByteDelta != 0 || delta.RowDelta != 0 || len(delta.ColumnsAdded) > 0 || len(delta.ColumnsRemoved) > 0 {
 				delta.ChangeType = "modified"
 				modCount++
