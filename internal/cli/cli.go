@@ -93,7 +93,7 @@ func runInspect(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 
 	cfgPath := fs.String("config", "", "Path to dataprobe.yaml configuration file")
-	format := fs.String("format", "table", "Output format: 'table' or 'json'")
+	format := fs.String("format", "table", "Output format: 'table', 'json', or 'markdown'")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -153,7 +153,7 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 
 	cfgPath := fs.String("config", "", "Path to dataprobe.yaml configuration file")
 	outPath := fs.String("out", "", "Destination file for snapshot JSON (required)")
-
+	anonymize := fs.Bool("anonymize", false, "Anonymize table, column, and schema names for external sharing")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return ExitSuccess
@@ -201,12 +201,14 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "dataprobe snapshot: introspection failed: %v\n", err)
 		return ExitRuntime
 	}
+	if *anonymize {
+		snap = snapshot.Anonymize(snap)
+	}
 
 	if err := snapshot.Save(snap, *outPath); err != nil {
 		fmt.Fprintf(stderr, "dataprobe snapshot: failed saving snapshot: %v\n", err)
 		return ExitRuntime
 	}
-
 	fmt.Fprintf(stdout, "dataprobe: snapshot saved successfully to %q (%d tables, %d foreign keys)\n",
 		*outPath, len(snap.Tables), len(snap.ForeignKeys))
 	return ExitSuccess
@@ -285,7 +287,7 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 
 	inPath := fs.String("input", "", "Path to snapshot JSON file (required)")
 	checks := fs.String("checks", "", "Comma-separated checks/categories to run (e.g. 'schema,indexes')")
-	format := fs.String("format", "table", "Output format: 'table' or 'json'")
+	format := fs.String("format", "table", "Output format: 'table', 'json', or 'markdown'")
 	failOn := fs.String("fail-on", "high", "Failure exit code threshold: 'none', 'low', 'medium', 'high', 'critical'")
 
 	if err := fs.Parse(args); err != nil {
@@ -330,7 +332,7 @@ func runDiff(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
-	format := fs.String("format", "table", "Output format: 'table' or 'json'")
+	format := fs.String("format", "table", "Output format: 'table', 'json', or 'markdown'")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

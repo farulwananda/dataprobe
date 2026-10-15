@@ -431,7 +431,6 @@
   btnFit.addEventListener('click', () => {
     if (cy) cy.fit(undefined, 40);
   });
-
   btnRelayout.addEventListener('click', () => {
     if (cy) {
       const layout = cy.layout({ name: 'breadthfirst', directed: true, padding: 50, spacingFactor: 1.2 });
@@ -439,6 +438,19 @@
     }
   });
 
+  const btnExportPNG = document.getElementById('btnExportPNG');
+  if (btnExportPNG) {
+    btnExportPNG.addEventListener('click', () => {
+      if (!cy) return;
+      const pngData = cy.png({ bg: '#0e0e11', full: true, scale: 2 });
+      const a = document.createElement('a');
+      a.href = pngData;
+      a.download = `dataprobe-graph-${snapshotData?.source?.alias || 'db'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  }
   // Tab switching inside Details panel
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {

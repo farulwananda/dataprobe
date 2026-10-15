@@ -19,6 +19,30 @@ func PrintAuditReport(findings []model.Finding, format string, out io.Writer) er
 		return enc.Encode(findings)
 	}
 
+	if format == "markdown" {
+		fmt.Fprintf(out, "# Database Structural Audit Report\n\n")
+		fmt.Fprintf(out, "**Total Findings:** %d\n\n", len(findings))
+		if len(findings) == 0 {
+			fmt.Fprintf(out, "No structural audit findings detected. All checks passed!\n")
+			return nil
+		}
+		fmt.Fprintf(out, "| Severity | Rule ID | Target | Title | Recommendation |\n")
+		fmt.Fprintf(out, "|---|---|---|---|---|\n")
+		for _, f := range findings {
+			target := f.Scope.Schema + "." + f.Scope.Table
+			if f.Scope.Index != "" {
+				target += " (" + f.Scope.Index + ")"
+			}
+			fmt.Fprintf(out, "| `%s` | `%s` | `%s` | %s | %s |\n",
+				strings.ToUpper(string(f.Severity)),
+				f.RuleID,
+				target,
+				f.Title,
+				f.Recommendation,
+			)
+		}
+		return nil
+	}
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	fmt.Fprintf(w, "DATABASE STRUCTURAL AUDIT REPORT\n")
 	fmt.Fprintf(w, "Total Findings:\t%d\n\n", len(findings))
@@ -48,7 +72,6 @@ func PrintAuditReport(findings []model.Finding, format string, out io.Writer) er
 	return nil
 }
 
-// PrintDiffReport renders snapshot diffs in human table or JSON format.
 func PrintDiffReport(d *diff.SnapshotDiff, format string, out io.Writer) error {
 	if format == "json" {
 		enc := json.NewEncoder(out)
@@ -56,6 +79,32 @@ func PrintDiffReport(d *diff.SnapshotDiff, format string, out io.Writer) error {
 		return enc.Encode(d)
 	}
 
+	if format == "markdown" {
+		fmt.Fprintf(out, "# Snapshot Diff & Growth Report\n\n")
+		fmt.Fprintf(out, "- **Period:** `%s` &rarr; `%s` (%.1f days)\n",
+			d.OldCapturedAt.Format("2006-01-02 15:04:05"),
+			d.NewCapturedAt.Format("2006-01-02 15:04:05"),
+			d.ElapsedDays)
+		fmt.Fprintf(out, "- **Storage Allocation:** `%s` &rarr; `%s` (Delta: `%s`, %.1f%%)\n",
+			formatBytes(d.OldTotalBytes), formatBytes(d.NewTotalBytes),
+			formatBytes(d.TotalByteDelta), d.TotalGrowthPct)
+		fmt.Fprintf(out, "- **Tables Summary:** %d added, %d removed, %d modified\n\n",
+			d.TablesAdded, d.TablesRemoved, d.TablesModified)
+
+		if len(d.TopGrowthTables) > 0 {
+			fmt.Fprintf(out, "### Top Growth Contributors\n\n")
+			fmt.Fprintf(out, "| Table | Old Size | New Size | Delta | Growth %% | Row Delta |\n")
+			fmt.Fprintf(out, "|---|---|---|---|---|---|\n")
+			for _, t := range d.TopGrowthTables {
+				oldSize := t.OldDataBytes + t.OldIndexBytes
+				newSize := t.NewDataBytes + t.NewIndexBytes
+				fmt.Fprintf(out, "| `%s.%s` | %s | %s | +%s | +%.1f%% | +%d |\n",
+					t.Schema, t.Name, formatBytes(oldSize), formatBytes(newSize),
+					formatBytes(t.TotalByteDelta), t.GrowthPct, t.RowDelta)
+			}
+		}
+		return nil
+	}
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	fmt.Fprintf(w, "DATAPROBE SNAPSHOT DIFF & GROWTH REPORT\n")
 	fmt.Fprintf(w, "Period:\t%s -> %s (%.1f days)\n",
