@@ -28,9 +28,11 @@
   const colTabCount = document.getElementById('colTabCount');
   const idxTabCount = document.getElementById('idxTabCount');
   const relTabCount = document.getElementById('relTabCount');
+  const findTabCount = document.getElementById('findTabCount');
   const columnsTableBody = document.getElementById('columnsTableBody');
   const indexesContainer = document.getElementById('indexesContainer');
   const relationsContainer = document.getElementById('relationsContainer');
+  const findingsContainer = document.getElementById('findingsContainer');
   const btnCloseDetails = document.getElementById('btnCloseDetails');
   const btnFit = document.getElementById('btnFit');
   const btnRelayout = document.getElementById('btnRelayout');
@@ -385,6 +387,30 @@
           </div>
         `;
         relationsContainer.appendChild(item);
+      });
+    }
+
+    // Findings Tab
+    const tableFindings = (snapshotData.findings || []).filter(f =>
+      f.scope?.schema === schema && f.scope?.table === name
+    );
+    findTabCount.textContent = tableFindings.length;
+    findingsContainer.innerHTML = '';
+    if (tableFindings.length === 0) {
+      findingsContainer.innerHTML = '<div class="stack-item" style="color:var(--text-subtle);">No audit issues detected on this table.</div>';
+    } else {
+      tableFindings.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'stack-item';
+        item.innerHTML = `
+          <div class="stack-item-title">
+            <span>${escapeHTML(f.title)}</span>
+            <span class="badge" style="background:#ef4444;color:#fff;">${escapeHTML(f.severity.toUpperCase())}</span>
+          </div>
+          <div class="stack-item-sub" style="color:#d1d5db;margin-top:4px;">${escapeHTML(f.summary)}</div>
+          <div class="stack-item-sub" style="color:#93c5fd;margin-top:4px;"><strong>Advice:</strong> ${escapeHTML(f.recommendation)}</div>
+        `;
+        findingsContainer.appendChild(item);
       });
     }
   }

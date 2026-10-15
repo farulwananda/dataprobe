@@ -118,9 +118,10 @@ dataprobe graph --input examples/synthetic-schema.json --open
 |---|---|---|
 | `dataprobe inspect` | `--config <file>`, `--format table\|json` | Introspect and display schema and storage summary |
 | `dataprobe snapshot` | `--config <file>`, `--out <file>` | Capture schema metadata to versioned JSON snapshot |
-| `dataprobe graph` | `--input <file>`, `--port <num>`, `--open` | Launch local interactive relationship graph viewer |
+| `dataprobe graph` | `--input <file>`, `--port <num>`, `--open` | Launch local interactive relationship graph viewer with findings overlay |
+| `dataprobe audit` | `--input <file>`, `--checks <list>`, `--fail-on <level>` | Run structural rules (missing PK, redundant indexes, missing FK indexes) |
+| `dataprobe diff` | `<old.json> <new.json>`, `--format table\|json` | Compare two snapshots to analyze drift and growth anomalies |
 | `dataprobe version` | | Show tool version |
-
 ### Exit Codes
 
 | Code | Meaning |

@@ -89,8 +89,8 @@
         <button class="tab-btn active" data-tab="tabColumns">Columns (<span id="colTabCount">0</span>)</button>
         <button class="tab-btn" data-tab="tabIndexes">Indexes (<span id="idxTabCount">0</span>)</button>
         <button class="tab-btn" data-tab="tabRelations">Relations (<span id="relTabCount">0</span>)</button>
+        <button class="tab-btn" data-tab="tabFindings">Findings (<span id="findTabCount">0</span>)</button>
       </div>
-
       <!-- Tab Contents -->
       <div class="panel-content">
         <!-- Columns Tab -->
@@ -116,6 +116,11 @@
         <!-- Relations Tab -->
         <div class="tab-pane" id="tabRelations">
           <div id="relationsContainer" class="stack-list"></div>
+        </div>
+
+        <!-- Findings Tab -->
+        <div class="tab-pane" id="tabFindings">
+          <div id="findingsContainer" class="stack-list"></div>
         </div>
       </div>
     </aside>

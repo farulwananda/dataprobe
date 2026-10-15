@@ -8,12 +8,16 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"github.com/farulwananda/dataprobe/internal/audit"
 	"github.com/farulwananda/dataprobe/internal/config"
 	"github.com/farulwananda/dataprobe/internal/db"
 	"github.com/farulwananda/dataprobe/internal/db/mysql"
+	"github.com/farulwananda/dataprobe/internal/diff"
 	"github.com/farulwananda/dataprobe/internal/graph"
+	"github.com/farulwananda/dataprobe/internal/model"
 	"github.com/farulwananda/dataprobe/internal/report"
 	"github.com/farulwananda/dataprobe/internal/snapshot"
 )
@@ -35,6 +39,8 @@ Commands:
   inspect      Inspect database schema metadata, row counts, and storage estimates
   snapshot     Capture database metadata into an offline versioned JSON snapshot
   graph        Launch interactive local relationship graph viewer
+  audit        Run offline structural rules against a captured snapshot
+  diff         Compare two snapshots to evaluate schema drift and storage growth
   version      Show dataprobe version information
 
 Flags:
@@ -57,7 +63,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return ExitSuccess
 
 	case "version", "-v", "--version":
-		fmt.Fprintln(stdout, "dataprobe v0.1.0 (Phase 0 & 1 MVP)")
+		fmt.Fprintln(stdout, "dataprobe v0.1.0 (Phases 0-4 Engine)")
 		return ExitSuccess
 
 	case "inspect":
@@ -68,6 +74,12 @@ func Run(args []string, stdout, stderr io.Writer) int {
 
 	case "graph":
 		return runGraph(cmdArgs, stdout, stderr)
+
+	case "audit":
+		return runAudit(cmdArgs, stdout, stderr)
+
+	case "diff":
+		return runDiff(cmdArgs, stdout, stderr)
 
 	default:
 		fmt.Fprintf(stderr, "dataprobe: unknown command %q\nRun 'dataprobe --help' for usage.\n", cmd)
@@ -225,6 +237,10 @@ func runGraph(args []string, stdout, stderr io.Writer) int {
 		return ExitUsage
 	}
 
+	// Also attach audit findings to snapshot for overlay in graph viewer
+	registry := audit.NewRegistry()
+	snap.Findings = registry.Run(snap, nil)
+
 	srv, err := graph.NewServer(graph.Config{
 		Snapshot: snap,
 		Port:     *port,
@@ -260,6 +276,125 @@ func runGraph(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "dataprobe graph: server error: %v\n", err)
 		return ExitRuntime
 	}
+}
+
+func runAudit(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("audit", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	inPath := fs.String("input", "", "Path to snapshot JSON file (required)")
+	checks := fs.String("checks", "", "Comma-separated checks/categories to run (e.g. 'schema,indexes')")
+	format := fs.String("format", "table", "Output format: 'table' or 'json'")
+	failOn := fs.String("fail-on", "high", "Failure exit code threshold: 'none', 'low', 'medium', 'high', 'critical'")
+
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return ExitSuccess
+		}
+		return ExitUsage
+	}
+
+	if *inPath == "" {
+		fmt.Fprintln(stderr, "dataprobe audit: --input flag is required")
+		return ExitUsage
+	}
+
+	snap, err := snapshot.Load(*inPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "dataprobe audit: %v\n", err)
+		return ExitUsage
+	}
+
+	var filterRules []string
+	if *checks != "" {
+		filterRules = strings.Split(*checks, ",")
+	}
+
+	registry := audit.NewRegistry()
+	findings := registry.Run(snap, filterRules)
+
+	if err := report.PrintAuditReport(findings, *format, stdout); err != nil {
+		fmt.Fprintf(stderr, "dataprobe audit: %v\n", err)
+		return ExitRuntime
+	}
+
+	if shouldFail(findings, *failOn) {
+		return ExitFinding
+	}
+
+	return ExitSuccess
+}
+
+func runDiff(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	format := fs.String("format", "table", "Output format: 'table' or 'json'")
+
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return ExitSuccess
+		}
+		return ExitUsage
+	}
+
+	posArgs := fs.Args()
+	if len(posArgs) < 2 {
+		fmt.Fprintln(stderr, "dataprobe diff: requires exactly two snapshot file paths (old.json new.json)")
+		return ExitUsage
+	}
+
+	oldPath := posArgs[0]
+	newPath := posArgs[1]
+
+	oldSnap, err := snapshot.Load(oldPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "dataprobe diff: failed loading %q: %v\n", oldPath, err)
+		return ExitUsage
+	}
+
+	newSnap, err := snapshot.Load(newPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "dataprobe diff: failed loading %q: %v\n", newPath, err)
+		return ExitUsage
+	}
+
+	d := diff.Compare(oldSnap, newSnap)
+	if err := report.PrintDiffReport(d, *format, stdout); err != nil {
+		fmt.Fprintf(stderr, "dataprobe diff: %v\n", err)
+		return ExitRuntime
+	}
+
+	return ExitSuccess
+}
+
+func shouldFail(findings []model.Finding, threshold string) bool {
+	th := strings.ToLower(strings.TrimSpace(threshold))
+	if th == "none" || th == "" {
+		return false
+	}
+
+	order := map[string]int{
+		"info":     1,
+		"low":      2,
+		"medium":   3,
+		"high":     4,
+		"critical": 5,
+	}
+
+	minLevel, exists := order[th]
+	if !exists {
+		minLevel = order["high"]
+	}
+
+	for _, f := range findings {
+		sev := strings.ToLower(string(f.Severity))
+		if lvl, ok := order[sev]; ok && lvl >= minLevel {
+			return true
+		}
+	}
+
+	return false
 }
 
 var httpErrClosed = errors.New("http: Server closed")

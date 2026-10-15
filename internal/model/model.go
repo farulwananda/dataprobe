@@ -8,6 +8,7 @@ type Accuracy string
 const (
 	AccuracyExact     Accuracy = "exact"
 	AccuracyEstimated Accuracy = "estimated"
+	AccuracyMetadata  Accuracy = "metadata"
 	AccuracySampled   Accuracy = "sampled"
 	AccuracyUnknown   Accuracy = "unknown"
 )
