@@ -15,3 +15,4 @@ coverage.html
 test_out/
 /tmp/
 snapshots/
+*_PLAN.md
