@@ -109,10 +109,42 @@ Or run the viewer with sample mock data included in this repository:
 dataprobe graph --input examples/synthetic-schema.json --open
 ```
 
-*The viewer binds exclusively to loopback (`127.0.0.1`), enforces per-session tokens, and bundles Cytoscape.js locally.*
-
 ---
 
+## Testing & Verification
+
+### 1. Run Unit & Race Tests
+
+```bash
+go test -v ./...
+go test -race ./...
+```
+
+### 2. Verify Using Included Mock Datasets
+
+You do not need a live database to test and verify `dataprobe`. Pre-built dummy schemas and snapshots are included under `testdata/` and `examples/`:
+
+```bash
+# Audit structural rules (SCH_001 missing PK, IDX_001 duplicate indexes, etc.)
+dataprobe audit --input examples/synthetic-schema.json
+
+# Compare two snapshots to detect schema drift and table growth deltas
+dataprobe diff testdata/snapshots/sample-baseline.json testdata/snapshots/sample-after-growth.json
+
+# Markdown format export
+dataprobe diff testdata/snapshots/sample-baseline.json testdata/snapshots/sample-after-growth.json --format markdown
+
+# Launch offline interactive graph
+dataprobe graph --input testdata/snapshots/sample-baseline.json --open
+```
+
+### 3. Local Database SQL Fixtures
+
+If you wish to spin up a local MySQL or PostgreSQL test database:
+- MySQL 8.x schema fixture: `testdata/fixtures/mysql_schema.sql`
+- PostgreSQL 12+ schema fixture: `testdata/fixtures/postgres_schema.sql`
+
+---
 ## CLI Reference
 
 | Command | Flags | Description |
