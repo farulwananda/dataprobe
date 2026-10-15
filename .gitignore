@@ -1,0 +1,17 @@
+# Binaries
+bin/
+dist/
+dataprobe
+*.exe
+
+# IDE & OS
+.DS_Store
+.idea/
+.vscode/
+
+# Test artifacts & local runs
+*.out
+coverage.html
+test_out/
+/tmp/
+snapshots/

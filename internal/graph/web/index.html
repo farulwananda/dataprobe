@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dataprobe — Relationship Graph</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/vendor/cytoscape.min.js"></script>
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo-badge">DP</div>
+      <span class="brand-title">Dataprobe</span>
+      <span class="badge" id="sourceBadge">Offline Graph</span>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="header-stats">
+      <div class="stat-pill"><span id="tableCount">0</span> tables</div>
+      <div class="stat-pill"><span id="relationCount">0</span> relations</div>
+      <div class="stat-pill"><span id="schemaCount">0</span> schemas</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="header-actions">
+      <button class="btn btn-secondary" id="btnFit">Fit View</button>
+      <button class="btn btn-secondary" id="btnRelayout">Re-layout</button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Sidebar: Filter & Table List -->
+    <aside class="sidebar">
+      <div class="sidebar-search">
+        <input type="text" id="tableSearch" placeholder="Filter tables... (e.g. users)" autocomplete="off">
+      </div>
+
+      <div class="sidebar-section">
+        <label class="section-label">Schemas</label>
+        <div id="schemaFilterList" class="filter-pills"></div>
+      </div>
+
+      <div class="sidebar-section list-section">
+        <div class="section-header">
+          <label class="section-label">Tables</label>
+          <span id="filteredTableCount" class="counter-label">0</span>
+        </div>
+        <div id="tableList" class="table-nav-list"></div>
+      </div>
+    </aside>
+
+    <!-- Center: Cytoscape Graph Area -->
+    <main class="graph-area">
+      <div id="cy"></div>
+      <div id="graphLoading" class="graph-loading">Loading database relationship graph...</div>
+    </main>
+
+    <!-- Right Drawer: Table Inspection Details -->
+    <aside class="details-panel" id="detailsPanel">
+      <div class="panel-header">
+        <div>
+          <span class="panel-schema" id="panelSchema">-</span>
+          <h2 class="panel-title" id="panelTitle">Select a Table</h2>
+        </div>
+        <button class="btn-close" id="btnCloseDetails" title="Close panel">&times;</button>
+      </div>
+
+      <!-- Stats Summary Grid -->
+      <div class="panel-stats-grid">
+        <div class="panel-stat">
+          <span class="stat-label">Estimated Rows</span>
+          <span class="stat-value" id="panelRows">-</span>
+        </div>
+        <div class="panel-stat">
+          <span class="stat-label">Data Size</span>
+          <span class="stat-value" id="panelDataSize">-</span>
+        </div>
+        <div class="panel-stat">
+          <span class="stat-label">Index Size</span>
+          <span class="stat-value" id="panelIndexSize">-</span>
+        </div>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="panel-tabs">
+        <button class="tab-btn active" data-tab="tabColumns">Columns (<span id="colTabCount">0</span>)</button>
+        <button class="tab-btn" data-tab="tabIndexes">Indexes (<span id="idxTabCount">0</span>)</button>
+        <button class="tab-btn" data-tab="tabRelations">Relations (<span id="relTabCount">0</span>)</button>
+      </div>
+
+      <!-- Tab Contents -->
+      <div class="panel-content">
+        <!-- Columns Tab -->
+        <div class="tab-pane active" id="tabColumns">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Null</th>
+                <th>Key</th>
+              </tr>
+            </thead>
+            <tbody id="columnsTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Indexes Tab -->
+        <div class="tab-pane" id="tabIndexes">
+          <div id="indexesContainer" class="stack-list"></div>
+        </div>
+
+        <!-- Relations Tab -->
+        <div class="tab-pane" id="tabRelations">
+          <div id="relationsContainer" class="stack-list"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/static/graph.js"></script>
+</body>
+</html>

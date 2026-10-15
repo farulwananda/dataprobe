@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "tool_version": "0.1.0",
+  "captured_at": "2026-10-15T09:00:00Z",
+  "source": {
+    "engine": "mysql",
+    "server_version": "8.0.35",
+    "alias": "demo-ecommerce",
+    "schemas": [
+      "shop_db"
+    ]
+  },
+  "capabilities": {
+    "table_statistics": true,
+    "workload_statistics": false,
+    "full_integrity_scan": false
+  },
+  "tables": [
+    {
+      "schema": "shop_db",
+      "name": "users",
+      "kind": "base_table",
+      "engine": "InnoDB",
+      "row_count": {
+        "value": 125000,
+        "quality": "estimated"
+      },
+      "storage_bytes": {
+        "data": 16777216,
+        "indexes": 4194304,
+        "quality": "estimated"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "db_type": "bigint(20)",
+          "nullable": false,
+          "is_primary_key": true,
+          "auto_increment": true
+        },
+        {
+          "name": "email",
+          "db_type": "varchar(255)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "created_at",
+          "db_type": "datetime",
+          "nullable": false,
+          "is_primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "columns": [
+            {
+              "name": "id",
+              "seq": 1
+            }
+          ],
+          "unique": true,
+          "primary": true,
+          "index_type": "BTREE"
+        },
+        {
+          "name": "idx_email_unique",
+          "columns": [
+            {
+              "name": "email",
+              "seq": 1
+            }
+          ],
+          "unique": true,
+          "primary": false,
+          "index_type": "BTREE"
+        }
+      ]
+    },
+    {
+      "schema": "shop_db",
+      "name": "orders",
+      "kind": "base_table",
+      "engine": "InnoDB",
+      "row_count": {
+        "value": 850000,
+        "quality": "estimated"
+      },
+      "storage_bytes": {
+        "data": 67108864,
+        "indexes": 25165824,
+        "quality": "estimated"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "db_type": "bigint(20)",
+          "nullable": false,
+          "is_primary_key": true,
+          "auto_increment": true
+        },
+        {
+          "name": "user_id",
+          "db_type": "bigint(20)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "total_amount",
+          "db_type": "decimal(12,2)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "status",
+          "db_type": "varchar(32)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "created_at",
+          "db_type": "datetime",
+          "nullable": false,
+          "is_primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "columns": [
+            {
+              "name": "id",
+              "seq": 1
+            }
+          ],
+          "unique": true,
+          "primary": true,
+          "index_type": "BTREE"
+        },
+        {
+          "name": "idx_orders_user_id",
+          "columns": [
+            {
+              "name": "user_id",
+              "seq": 1
+            }
+          ],
+          "unique": false,
+          "primary": false,
+          "index_type": "BTREE"
+        }
+      ]
+    },
+    {
+      "schema": "shop_db",
+      "name": "order_items",
+      "kind": "base_table",
+      "engine": "InnoDB",
+      "row_count": {
+        "value": 2400000,
+        "quality": "estimated"
+      },
+      "storage_bytes": {
+        "data": 134217728,
+        "indexes": 50331648,
+        "quality": "estimated"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "db_type": "bigint(20)",
+          "nullable": false,
+          "is_primary_key": true,
+          "auto_increment": true
+        },
+        {
+          "name": "order_id",
+          "db_type": "bigint(20)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "product_name",
+          "db_type": "varchar(255)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "quantity",
+          "db_type": "int(11)",
+          "nullable": false,
+          "is_primary_key": false
+        },
+        {
+          "name": "unit_price",
+          "db_type": "decimal(10,2)",
+          "nullable": false,
+          "is_primary_key": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "columns": [
+            {
+              "name": "id",
+              "seq": 1
+            }
+          ],
+          "unique": true,
+          "primary": true,
+          "index_type": "BTREE"
+        },
+        {
+          "name": "idx_order_items_order_id",
+          "columns": [
+            {
+              "name": "order_id",
+              "seq": 1
+            }
+          ],
+          "unique": false,
+          "primary": false,
+          "index_type": "BTREE"
+        }
+      ]
+    }
+  ],
+  "foreign_keys": [
+    {
+      "name": "fk_orders_user_id",
+      "from": {
+        "schema": "shop_db",
+        "table": "orders",
+        "columns": [
+          "user_id"
+        ]
+      },
+      "to": {
+        "schema": "shop_db",
+        "table": "users",
+        "columns": [
+          "id"
+        ]
+      },
+      "origin": "declared",
+      "on_delete": "RESTRICT",
+      "on_update": "CASCADE"
+    },
+    {
+      "name": "fk_order_items_order_id",
+      "from": {
+        "schema": "shop_db",
+        "table": "order_items",
+        "columns": [
+          "order_id"
+        ]
+      },
+      "to": {
+        "schema": "shop_db",
+        "table": "orders",
+        "columns": [
+          "id"
+        ]
+      },
+      "origin": "declared",
+      "on_delete": "CASCADE",
+      "on_update": "CASCADE"
+    }
+  ],
+  "findings": [],
+  "warnings": []
+}

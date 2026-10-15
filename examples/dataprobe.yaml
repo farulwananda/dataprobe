@@ -1,0 +1,31 @@
+version: 1
+
+source:
+  engine: mysql
+  # The environment variable holding your read-only database credentials.
+  # Credentials are NEVER saved to config files, logs, or snapshots.
+  dsn_env: DATAPROBE_DSN
+  alias: production-store
+  include_schemas:
+    - shop_db
+  exclude_tables:
+    - "*_cache"
+    - "temp_*"
+
+audit:
+  profile: metadata             # metadata | sampled | full
+  timeout: 10s                  # per-query limit
+  total_budget: 60s             # overall audit budget
+  max_concurrency: 2            # safe concurrency for production
+  fail_on: high
+
+growth:
+  min_snapshots: 3
+  alert_relative_pct: 30
+  alert_absolute_mib: 100
+  lookback_days: 7
+
+graph:
+  hide_system_tables: true
+  show_indexes: false
+  show_inferred_relations: false
