@@ -84,8 +84,11 @@ func (c *Config) Validate() error {
 	if engine == "" {
 		return errors.New("source.engine is required")
 	}
-	if engine != "mysql" {
-		return fmt.Errorf("unsupported database engine: %q (supported: mysql)", engine)
+	if engine != "mysql" && engine != "postgres" && engine != "postgresql" {
+		return fmt.Errorf("unsupported database engine: %q (supported: mysql, postgres)", engine)
+	}
+	if engine == "postgresql" {
+		engine = "postgres"
 	}
 	c.Source.Engine = engine
 

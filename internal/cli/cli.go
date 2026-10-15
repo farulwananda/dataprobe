@@ -15,6 +15,7 @@ import (
 	"github.com/farulwananda/dataprobe/internal/config"
 	"github.com/farulwananda/dataprobe/internal/db"
 	"github.com/farulwananda/dataprobe/internal/db/mysql"
+	"github.com/farulwananda/dataprobe/internal/db/postgres"
 	"github.com/farulwananda/dataprobe/internal/diff"
 	"github.com/farulwananda/dataprobe/internal/graph"
 	"github.com/farulwananda/dataprobe/internal/model"
@@ -121,7 +122,7 @@ func runInspect(args []string, stdout, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Audit.Timeout)
 	defer cancel()
 
-	inspector, err := mysql.NewInspector(dsn)
+	inspector, err := newInspector(cfg.Source.Engine, dsn)
 	if err != nil {
 		fmt.Fprintf(stderr, "dataprobe inspect: failed connecting to database: %v\n", err)
 		return ExitRuntime
@@ -184,7 +185,7 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Audit.Timeout)
 	defer cancel()
 
-	inspector, err := mysql.NewInspector(dsn)
+	inspector, err := newInspector(cfg.Source.Engine, dsn)
 	if err != nil {
 		fmt.Fprintf(stderr, "dataprobe snapshot: failed connecting to database: %v\n", err)
 		return ExitRuntime
@@ -398,3 +399,14 @@ func shouldFail(findings []model.Finding, threshold string) bool {
 }
 
 var httpErrClosed = errors.New("http: Server closed")
+
+func newInspector(engine, dsn string) (db.Inspector, error) {
+	switch engine {
+	case "mysql":
+		return mysql.NewInspector(dsn)
+	case "postgres", "postgresql":
+		return postgres.NewInspector(dsn)
+	default:
+		return nil, fmt.Errorf("unsupported database engine: %q", engine)
+	}
+}

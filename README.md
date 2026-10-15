@@ -14,11 +14,12 @@ Built for backend developers, data engineers, and database maintainers who need 
 
 ## Key Principles
 
-- **Production-Safe by Default:** Queries `INFORMATION_SCHEMA` metadata only. **Zero full-table scans** on production tables.
+- **Production-Safe by Default:** Queries `INFORMATION_SCHEMA` and `pg_catalog` metadata only. **Zero full-table scans** on production tables.
 - **Strictly Read-Only:** Does not execute DDL/DML, `ALTER TABLE`, `DROP`, `DELETE`, or "autofixes".
+- **Multi-Engine Ready:** Introspects MySQL 5.7+/8.x and PostgreSQL 12+ schemas, columns, indexes, and composite foreign keys.
 - **Local-First & Offline:** Single portable Go binary. Runs local interactive graph viewer with vendored assets (no internet or CDN required).
 - **Secret-Free Snapshots:** Database credentials, passwords, and raw row payloads are **never persisted** to configuration files, logs, or snapshots.
-- **Honest Diagnostics:** Explicitly labels statistical row counts and storage allocation numbers as `estimated` (InnoDB `TABLE_ROWS`).
+- **Honest Diagnostics:** Explicitly labels statistical row counts and storage allocation numbers as `estimated` (InnoDB `TABLE_ROWS`, PostgreSQL `pg_class.reltuples`).
 
 ---
 
